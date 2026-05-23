@@ -373,8 +373,21 @@ class MainWindow(tk.Tk):
 
     def _worker(self):
         from core.indexer import index_folder
-        tf = len(self._folders)
-        for fi, folder in enumerate(self._folders):
+        from core.database import get_folders
+
+        already = {row[0] for row in get_folders()}
+        to_index = [f for f in self._folders if f not in already]
+        skipped = len(self._folders) - len(to_index)
+
+        if not to_index:
+            self._q.put(('skip', f'Tüm klasörler zaten indekslenmiş ({skipped} klasör atlandı).'))
+            return
+
+        if skipped:
+            self._q.put(('p', 0, f'{skipped} klasör zaten indekslenmiş, atlandı. Yeni klasörler işleniyor…'))
+
+        tf = len(to_index)
+        for fi, folder in enumerate(to_index):
             if self._cancel:
                 break
 
@@ -392,6 +405,10 @@ class MainWindow(tk.Tk):
                 if msg[0] == 'p':
                     self._progress.set(msg[1])
                     self._prog_lbl.config(text=msg[2])
+                elif msg[0] == 'skip':
+                    self._prog_lbl.config(text=msg[1])
+                    self._on_done()
+                    return
                 elif msg[0] == 'done':
                     self._on_done()
                     return
