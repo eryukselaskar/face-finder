@@ -311,6 +311,40 @@ class MainWindow(tk.Tk):
         self._cancel_btn.pack(side='left', padx=10)
         self._cancel_btn.pack_forget()
 
+        # ── Log section
+        tk.Frame(page, bg=BORDER, height=1).pack(fill='x', pady=(4, 12))
+
+        log_hdr = tk.Frame(page, bg=BG)
+        log_hdr.pack(fill='x', pady=(0, 6))
+        tk.Label(log_hdr, text='UYARILAR & LOG', bg=BG, fg=TEXT3,
+                 font=('Segoe UI', 8, 'bold')).pack(side='left')
+        tk.Button(log_hdr, text='Temizle', command=self._clear_log,
+                  bg=BG, fg=TEXT3, relief='flat', bd=0, cursor='hand2',
+                  font=('Segoe UI', 8)).pack(side='right')
+
+        from core.indexer import _LOG_PATH
+        tk.Label(log_hdr, text=str(_LOG_PATH), bg=BG, fg=TEXT3,
+                 font=('Segoe UI', 7)).pack(side='right', padx=12)
+
+        log_wrap = tk.Frame(page, bg=CARD, pady=1)
+        log_wrap.pack(fill='both', expand=True)
+
+        log_vsb = ttk.Scrollbar(log_wrap)
+        log_vsb.pack(side='right', fill='y')
+
+        self._log_txt = tk.Text(
+            log_wrap, bg=CARD, fg=TEXT2, relief='flat', bd=0,
+            font=('Courier New', 8), state='disabled',
+            highlightthickness=0, wrap='none',
+            yscrollcommand=log_vsb.set,
+        )
+        self._log_txt.pack(fill='both', expand=True, padx=10, pady=8)
+        log_vsb.config(command=self._log_txt.yview)
+
+        self._log_txt.tag_config('warn',  foreground=AMBER)
+        self._log_txt.tag_config('info',  foreground=TEXT2)
+        self._log_txt.tag_config('skip',  foreground=ACCENTL)
+
         return page
 
     def _stat_card(self, parent, str_var, label, color):
@@ -351,6 +385,18 @@ class MainWindow(tk.Tk):
             self._prog_lbl.config(text='')
             self._refresh_stats()
 
+    # ── Log helpers ──────────────────────────────────────
+    def _append_log(self, text: str, tag: str = 'info'):
+        self._log_txt.config(state='normal')
+        self._log_txt.insert('end', text + '\n', tag)
+        self._log_txt.see('end')
+        self._log_txt.config(state='disabled')
+
+    def _clear_log(self):
+        self._log_txt.config(state='normal')
+        self._log_txt.delete('1.0', 'end')
+        self._log_txt.config(state='disabled')
+
     # ── Indexing ─────────────────────────────────────────
     def _start_index(self):
         if not self._folders:
@@ -358,6 +404,7 @@ class MainWindow(tk.Tk):
             return
         if self._indexing:
             return
+        self._clear_log()
         self._indexing = True
         self._cancel = False
         self._index_btn.pack_forget()
@@ -385,17 +432,23 @@ class MainWindow(tk.Tk):
 
         if skipped:
             self._q.put(('p', 0, f'{skipped} klasör zaten indekslenmiş, atlandı. Yeni klasörler işleniyor…'))
+            self._q.put(('log', f'ℹ  {skipped} klasör atlandı (zaten indekslenmiş)', 'skip'))
 
         tf = len(to_index)
         for fi, folder in enumerate(to_index):
             if self._cancel:
                 break
 
+            self._q.put(('log', f'ℹ  İndeksleniyor: {folder}', 'info'))
+
             def _cb(cur, total, name, _fi=fi, _tf=tf):
                 pct = (_fi * 100 + cur / max(total, 1) * 100) / _tf
                 self._q.put(('p', pct, f'{name}  ({cur} / {total})'))
 
-            index_folder(folder, progress=_cb, cancelled=lambda: self._cancel)
+            def _warn(name, reason):
+                self._q.put(('log', f'⚠  {name}  —  {reason}', 'warn'))
+
+            index_folder(folder, progress=_cb, cancelled=lambda: self._cancel, warn_cb=_warn)
         self._q.put(('done',))
 
     def _poll(self):
@@ -405,8 +458,11 @@ class MainWindow(tk.Tk):
                 if msg[0] == 'p':
                     self._progress.set(msg[1])
                     self._prog_lbl.config(text=msg[2])
+                elif msg[0] == 'log':
+                    self._append_log(msg[1], msg[2])
                 elif msg[0] == 'skip':
                     self._prog_lbl.config(text=msg[1])
+                    self._append_log(f'ℹ  {msg[1]}', 'skip')
                     self._on_done()
                     return
                 elif msg[0] == 'done':
@@ -425,8 +481,10 @@ class MainWindow(tk.Tk):
         if not self._cancel:
             self._progress.set(100)
             self._prog_lbl.config(text='İndeksleme tamamlandı ✓')
+            self._append_log('✓  İndeksleme tamamlandı', 'info')
         else:
             self._prog_lbl.config(text='İptal edildi.')
+            self._append_log('✗  İptal edildi', 'warn')
         self._cancel = False
         self._refresh_stats()
 
