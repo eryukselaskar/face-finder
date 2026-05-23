@@ -1,5 +1,7 @@
 import os
+import platform
 import shutil
+import subprocess
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -27,7 +29,10 @@ TEXT3   = '#3d3c55'
 THUMB_W = 200
 THUMB_H = 158
 COLS    = 4
-_FONT   = 'C:/Windows/Fonts/segoeui.ttf'
+if platform.system() == "Darwin":
+    _FONT = '/System/Library/Fonts/Helvetica.ttc'
+else:
+    _FONT = 'C:/Windows/Fonts/segoeui.ttf'
 
 
 def _shade(h: str, amt: int) -> str:
@@ -215,7 +220,12 @@ class ResultsPanel(tk.Frame):
 
     def _open(self, path: str):
         try:
-            os.startfile(path)
+            if platform.system() == "Darwin":
+                subprocess.run(['open', path])
+            elif platform.system() == "Windows":
+                os.startfile(path)
+            else:
+                subprocess.run(['xdg-open', path])
         except Exception as e:
             messagebox.showerror('Hata', str(e))
 

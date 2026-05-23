@@ -10,15 +10,15 @@ except Exception:
 
 def main():
     try:
-        import face_recognition  # noqa: F401
+        import deepface  # noqa: F401
     except ImportError:
         import tkinter.messagebox as mb
         import tkinter as tk
         tk.Tk().withdraw()
         mb.showerror(
             "Eksik Kütüphane",
-            "face_recognition kütüphanesi bulunamadı.\n\n"
-            "Kurulum için README.md dosyasını okuyun.",
+            "deepface kütüphanesi bulunamadı.\n\n"
+            "Kurulum:\n  pip install deepface tf-keras",
         )
         sys.exit(1)
 
