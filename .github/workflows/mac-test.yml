@@ -1,0 +1,46 @@
+name: Mac Test
+
+on:
+  push:
+    branches: [mac-deepface]
+
+jobs:
+  test:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install deepface tf-keras pillow pillow-heif
+
+      - name: DeepFace import check
+        run: python -c "import deepface; print('DeepFace OK')"
+
+      - name: Tkinter check
+        run: python -c "import tkinter; print('Tkinter OK')"
+
+      - name: Database module check
+        run: python -c "from core.database import init, get_all_encodings; print('Database OK')"
+
+      - name: Indexer module check
+        run: python -c "from core.indexer import index_folder, collect_images; print('Indexer OK')"
+
+      - name: Searcher module check
+        run: python -c "from core.searcher import get_encoding, search; print('Searcher OK')"
+
+      - name: main.py import check
+        run: python -c "import main; print('main.py OK')"
