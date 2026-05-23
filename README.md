@@ -15,7 +15,57 @@ Referans bir fotoğraf yükleyin; uygulama tüm indekslenmiş klasörlerinizde a
 
 ---
 
-## Kurulum
+## Mac Kurulum Talimatları
+
+> Bu branch (`mac-deepface`) macOS için optimize edilmiştir.  
+> Yüz tanıma motoru: **DeepFace + ArcFace modeli**
+
+### Gereksinimler
+
+- macOS 12 Monterey veya üzeri
+- Python 3.10 – 3.11
+- İnternet bağlantısı (yalnızca ilk çalıştırmada — ArcFace modeli otomatik indirilir)
+
+### Adım 1 — Sanal ortam oluştur
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### Adım 2 — TensorFlow kur
+
+**Intel Mac:**
+```bash
+pip install tensorflow
+```
+
+**Apple Silicon (M1 / M2 / M3):**
+```bash
+pip install tensorflow-macos tensorflow-metal
+```
+
+> `tensorflow-metal` paketi Apple Silicon GPU'sunu (Metal) aktif eder.  
+> Yüklenmezse uygulama CPU ile çalışmaya devam eder.
+
+### Adım 3 — Geri kalan bağımlılıkları kur
+
+```bash
+pip install -r requirements.txt
+```
+
+### Adım 4 — İlk çalıştırma
+
+```bash
+python main.py
+```
+
+İlk çalıştırmada DeepFace, **ArcFace** ve **RetinaFace** modellerini otomatik indirir (~700 MB).  
+Bu işlem yalnızca bir kez yapılır; sonraki çalıştırmalarda tamamen offline çalışır.
+
+---
+
+## Kurulum (Windows)
 
 ### Yöntem 1 — Conda (Windows için önerilen)
 
@@ -87,12 +137,15 @@ python main.py
 
 ## Hassasiyet Rehberi
 
+> Metrik: **Cosine Distance** (ArcFace)  
+> 0 = birebir aynı, 1 = tamamen farklı
+
 | Tolerans | Açıklama |
 |----------|----------|
-| 0.30 – 0.45 | Çok sıkı — neredeyse birebir benzerlik gerekir |
-| 0.45 – 0.55 | Sıkı — aynı kişi, farklı açılar |
-| 0.55 – 0.65 | **Orta (önerilen)** — genel kullanım için ideal |
-| 0.65 – 0.80 | Geniş — daha fazla sonuç, yanlış pozitifler artabilir |
+| 0.20 – 0.35 | Çok sıkı — neredeyse birebir benzerlik gerekir |
+| 0.35 – 0.45 | Sıkı — aynı kişi, farklı açılar |
+| 0.45 – 0.55 | **Orta (önerilen)** — genel kullanım için ideal |
+| 0.55 – 0.68 | Geniş — daha fazla sonuç, yanlış pozitifler artabilir |
 
 ---
 
@@ -117,7 +170,11 @@ face-finder/
 
 ## Notlar
 
-- Uygulama tamamen **CPU** üzerinde çalışır, GPU gerekmez
-- Veritabanı dosyası: `C:\Users\<kullanıcı>\.face_finder\index.db`
-- Desteklenen formatlar: JPG, JPEG, PNG, BMP, TIFF, WEBP
+- **Model**: ArcFace (512-boyutlu embedding, cosine distance)
+- **Dedektör**: RetinaFace (yüz tespitinde yüksek doğruluk)
+- Apple Silicon'da `tensorflow-metal` kuruluysa GPU hızlandırması otomatik devreye girer
+- Intel Mac'te CPU ile çalışır, GPU gerekmez
+- Veritabanı dosyası: `~/.face_finder/index.db`
+- Desteklenen formatlar: JPG, JPEG, PNG, BMP, TIFF, WEBP, HEIC (pillow-heif kuruluysa)
 - Yüz bulunamayan fotoğraflar indeksleme sırasında atlanır
+- **İlk çalıştırma internet gerektirir** — model indirildikten sonra tamamen offline çalışır

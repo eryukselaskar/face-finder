@@ -1,4 +1,5 @@
-import face_recognition
+import numpy as np
+from deepface import DeepFace
 from pathlib import Path
 from typing import Callable, Optional
 from core.database import init, clear_folder, insert_faces, save_folder_stats
@@ -13,6 +14,9 @@ except ImportError:
 EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
 if _HEIC_OK:
     EXTS |= {".heic", ".heif"}
+
+_MODEL = "ArcFace"
+_DETECTOR = "retinaface"
 
 
 def collect_images(folder: str) -> list:
@@ -34,11 +38,16 @@ def index_folder(
         if cancelled and cancelled():
             break
         try:
-            img = face_recognition.load_image_file(str(path))
-            encs = face_recognition.face_encodings(img)
-            if encs:
-                insert_faces(str(path), folder, encs)
-                face_count += len(encs)
+            results = DeepFace.represent(
+                img_path=str(path),
+                model_name=_MODEL,
+                detector_backend=_DETECTOR,
+                enforce_detection=True,
+            )
+            encodings = [np.array(r["embedding"]) for r in results]
+            if encodings:
+                insert_faces(str(path), folder, encodings)
+                face_count += len(encodings)
         except Exception:
             pass
         if progress:
